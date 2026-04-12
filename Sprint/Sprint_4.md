@@ -1,20 +1,14 @@
-# 🎲 4218 – Sprint 4 (Core Gameplay)
+# 🎲 4218 – Sprint 4 (Core Gameplay & Hidden Dice)
 
 ---
 
 # 🧭 Sprint Goal
 
-Implement the **core gameplay mechanics**, so players can:
+Implement the **core gameplay mechanics** and the **hidden-information system**.
 
-* Take turns
-* Roll dice
-* Keep dice between rolls
-* Follow the rule: **must keep at least one die each roll**
-* Optionally stop early
-* Hide the last die
-* Finish a turn
+Players take turns **one at a time**. During a turn, other players can only see the dice that the active player has **put aside**. The active player may also **hide the final die on the last roll**, so opponents do not know the full result until the round ends.
 
-This is where the game becomes playable (without full scoring/lives yet).
+This sprint makes the game playable and adds the bluffing element.
 
 ---
 
@@ -22,11 +16,13 @@ This is where the game becomes playable (without full scoring/lives yet).
 
 At the end of Sprint 4:
 
-✅ Players can take turns
+✅ Players take turns one at a time
 ✅ Dice rolling works
 ✅ Keep-dice system works
-✅ Turn flow is enforced
-✅ Players can finish turns
+✅ Player must keep at least 1 die after each roll
+✅ Other players only see kept dice
+✅ Player can hide the final die on the last roll
+✅ Full dice are revealed at end of round
 ✅ Turn state syncs in realtime
 
 ---
@@ -34,8 +30,8 @@ At the end of Sprint 4:
 # 🧩 User Story
 
 **As a player**,
-I want to roll dice and play my turn,
-so I can try to get the best possible result.
+I want to roll dice privately while only showing the dice I set aside,
+so other players must guess what I may still have and think strategically about what they need to win the round.
 
 ---
 
@@ -47,54 +43,78 @@ so I can try to get the best possible result.
 
 ### Goal
 
-Track what happens during a player's turn.
+Track the full state of one player's turn.
 
 ### Data Structure
 
 * `playerId`
-* `dice[]`
+* `rolledDice[]`
 * `keptDice[]`
+* `hiddenDice[]`
 * `remainingDice`
 * `rollCount`
 * `hasRolled`
 * `isFinished`
+* `isLastRoll`
 * `hiddenLastDie`
 
-### Tasks
-
-* Add turn state to game object
-* Reset turn state when new turn starts
-
 ### Acceptance Criteria
 
-* Turn state exists and updates correctly
+* Turn state exists for the active player
+* Turn state resets correctly when the next turn starts
 
 ---
 
-## Ticket 2 — Dice rolling logic
+## Ticket 2 — Create private vs public turn view
 
 ### Goal
 
-Simulate rolling dice.
+Show different information to the active player and the other players.
+
+### Rules
+
+* Active player sees all their dice
+* Other players only see:
+
+  * kept dice
+  * number of hidden dice remaining
+* Other players do not see currently rolled dice
+* Other players do not see the hidden last die
+
+### Acceptance Criteria
+
+* Server can produce:
+
+  * private view for active player
+  * public view for all other players
+
+---
+
+## Ticket 3 — Dice rolling logic
+
+### Goal
+
+Roll only the dice that are still in play.
 
 ### Tasks
 
-* Create dice generator (1–6)
+* Create random dice generator (1–6)
 * Roll only remaining dice
-* Update dice values each roll
+* Store the result privately for the active player
 
 ### Acceptance Criteria
 
-* Dice roll produces valid values
+* Rolled dice are valid
 * Only unkept dice are rolled
+* Rolled result is hidden from other players
 
 ---
 
-## Ticket 3 — Create roll action (socket)
+## Ticket 4 — Create roll action
 
 ### Goal
 
-Let player roll dice.
+Let the active player roll dice.
 
 ### Event
 
@@ -102,312 +122,354 @@ Let player roll dice.
 
 ### Tasks
 
-* Validate it is player’s turn
-* Roll dice
-* Update turn state
-* Broadcast updated state
+* Validate it is the player’s turn
+* Roll remaining dice
+* Update private turn state
+* Broadcast public state to others
+* Send private state to active player
 
 ### Acceptance Criteria
 
-* Only current player can roll
-* All players see dice update in realtime
+* Only active player can roll
+* Other players do not see the rolled dice values
+* Everyone sees updated public turn state correctly
 
 ---
 
-## Ticket 4 — Keep dice system
+## Ticket 5 — Keep dice system
 
 ### Goal
 
-Allow player to lock dice between rolls.
+Allow player to put dice aside after a roll.
 
 ### Tasks
 
-* Player selects dice to keep
-* Move selected dice to `keptDice`
-* Reduce remaining dice count
+* Active player selects one or more dice to keep
+* Move selected dice into `keptDice`
+* Reduce number of remaining dice
 
 ### Acceptance Criteria
 
+* Kept dice are visible to all players
 * Kept dice are not rolled again
-* Remaining dice decrease correctly
+* Remaining dice count updates correctly
 
 ---
 
-## Ticket 5 — Enforce rule: keep at least 1 die
+## Ticket 6 — Enforce rule: keep at least 1 die
 
 ### Goal
 
-Prevent invalid gameplay.
+Prevent invalid play.
 
 ### Tasks
 
-* Validate that player selects ≥1 die after each roll
-* Block next roll if not satisfied
-* Show error message
+* Require player to keep at least one die after each roll
+* Block future rolls until they do
+* Return error message if rule is broken
 
 ### Acceptance Criteria
 
-* Player cannot roll again without keeping at least one die
+* Player cannot continue without keeping at least one die
 
 ---
 
-## Ticket 6 — Sync dice and kept dice
+## Ticket 7 — Public visibility update
 
 ### Goal
 
-Ensure all players see the same state.
+Update all opponents with only allowed information.
 
-### Tasks
+### Other players should see:
 
-* Broadcast:
+* kept dice
+* how many dice remain hidden
+* whether the turn is finished
 
-  * rolled dice
-  * kept dice
-* Update UI for all players
+### They should NOT see:
+
+* active rolled dice
+* hidden dice values
+* hidden last die value
 
 ### Acceptance Criteria
 
-* All players see same dice state in realtime
+* Public state does not leak secret information
 
 ---
 
-## Ticket 7 — Add turn order system
+## Ticket 8 — Turn order system
 
 ### Goal
 
-Control which player acts.
+Ensure players act one at a time.
 
 ### Tasks
 
-* Store list of players
-* Track current player index
+* Track turn order
+* Track active player index
+* Block actions from non-active players
 * Move to next player when turn ends
 
 ### Acceptance Criteria
 
 * Only one player can act at a time
-* Turn rotates correctly
+* Turn rotates correctly across players
 
 ---
 
-## Ticket 8 — Highlight current player (UI)
+## Ticket 9 — Add finish turn action
 
 ### Goal
 
-Make turns clear.
+Allow player to stop when they want.
 
 ### Tasks
 
-* Highlight active player
-* Disable controls for other players
-
-### Acceptance Criteria
-
-* Only active player can interact
-* UI clearly shows whose turn it is
-
----
-
-## Ticket 9 — Add “Finish Turn” action
-
-### Goal
-
-Allow player to stop rolling.
-
-### Tasks
-
-* Add button to finish turn
+* Add `turn:finish` action
 * Mark turn as complete
-* Store final dice result
+* Save final dice state privately until reveal phase
 
 ### Acceptance Criteria
 
-* Player can end turn early
-* Turn result is saved
+* Active player can finish turn
+* Final dice are locked for that player
 
 ---
 
-## Ticket 10 — Hide last die feature
+## Ticket 10 — Add hidden last die feature
 
 ### Goal
 
-Implement bluff/hidden mechanic.
+Let the player hide the final die on the last roll.
+
+### Rules
+
+* Only applies on the final roll
+* Hidden die remains secret until the reveal phase
+* Other players should not know its value
 
 ### Tasks
 
-* Allow player to hide final die
-* Store hidden value separately
-* Show hidden state to other players
+* Add hide-last-die option
+* Store hidden last die privately
+* Show placeholder publicly
 
 ### Acceptance Criteria
 
-* Last die is hidden from others
-* Player still sees their own die
+* Last die can be hidden correctly
+* Other players cannot see the hidden value
+* Active player still sees it
 
 ---
 
-## Ticket 11 — Prevent invalid actions
+## Ticket 11 — Represent hidden dice in UI
 
 ### Goal
 
-Avoid broken gameplay.
+Make hidden information understandable in the interface.
 
 ### Tasks
 
-* Prevent rolling after finishing turn
+* Show kept dice normally
+* Show hidden dice as placeholders, such as `?`
+* Show hidden final die differently if needed
+* Make it clear whose turn it is
+
+### Acceptance Criteria
+
+* UI clearly separates visible dice from hidden dice
+
+---
+
+## Ticket 12 — Prevent invalid actions
+
+### Goal
+
+Avoid broken gameplay states.
+
+### Tasks
+
+* Prevent rolling after turn is finished
 * Prevent keeping dice before rolling
-* Prevent actions out of turn
+* Prevent hiding last die too early
+* Prevent out-of-turn actions
 
 ### Acceptance Criteria
 
 * Invalid actions are blocked
-* Errors handled cleanly
+* Clear errors are returned
 
 ---
 
-## Ticket 12 — End turn and move to next player
+## Ticket 13 — Store end-of-turn results securely
 
 ### Goal
 
-Complete turn flow.
+Prepare for round reveal and Sprint 5 scoring.
 
-### Tasks
+### Store
 
-* After finishing turn:
-
-  * lock state
-  * move to next player
-* Reset turn state for next player
+* `playerId`
+* `finalDice`
+* `keptDice`
+* `hiddenDice`
+* `hiddenLastDie`
+* `isFinished`
 
 ### Acceptance Criteria
 
-* Turn switches correctly
-* Next player starts fresh
+* Full end-of-turn result is saved for reveal phase
 
 ---
 
-## Ticket 13 — Add turn timeout (optional)
+## Ticket 14 — Add round reveal phase
 
 ### Goal
 
-Prevent stalling.
+Reveal all hidden information after all players have finished their turns.
 
-### Tasks
+### Flow
 
-* Add timer per turn (optional)
-* Auto-finish turn on timeout
+1. Player 1 finishes full turn
+2. Player 2 finishes full turn
+3. Continue until all active players finish
+4. Reveal all final dice for all players
+5. Send round results to everyone
 
 ### Acceptance Criteria
 
-* Turn ends automatically if enabled
+* No full result is revealed early
+* All hidden dice are revealed together at round end
 
 ---
 
-## Ticket 14 — Add game state container
+## Ticket 15 — Create round reveal event
 
 ### Goal
 
-Prepare for scoring (Sprint 5).
+Broadcast all final dice when the round is complete.
 
-### Tasks
+### Event
 
-* Store all players' final turn results
-* Store dice outcomes per round
+`round:reveal`
+
+### Payload example
+
+```ts
+{
+  players: [
+    {
+      playerId: "p1",
+      finalDice: [4, 2, 6, 6, 3]
+    },
+    {
+      playerId: "p2",
+      finalDice: [4, 5, 5, 1, 2]
+    }
+  ]
+}
+```
 
 ### Acceptance Criteria
 
-* All results are saved for next sprint
+* All players receive complete dice results at end of round
 
 ---
 
-## Ticket 15 — Frontend dice UI
+## Ticket 16 — Frontend dice UI
 
 ### Goal
 
-Make dice interactive.
+Make dice interactive for the current player.
 
 ### Tasks
 
-* Display dice visually
-* Click to select dice
-* Show kept vs active dice
+* Show current player’s full dice
+* Allow selecting dice to keep
+* Show kept dice separately
+* Show hidden placeholders for opponents
 
 ### Acceptance Criteria
 
-* Dice can be selected and kept
-* UI updates correctly
+* Current player can interact with dice
+* Opponents only see public information
 
 ---
 
-## Ticket 16 — Action buttons UI
+## Ticket 17 — Action buttons UI
 
 ### Goal
 
-Allow player interaction.
+Allow correct turn actions.
 
 ### Buttons
 
 * Roll Dice
 * Keep Dice
+* Hide Last Die
 * Finish Turn
 
 ### Acceptance Criteria
 
-* Buttons work correctly
-* Disabled when not allowed
+* Buttons only work when allowed
+* Buttons are disabled for non-active players
 
 ---
 
-## Ticket 17 — Realtime turn sync
+## Ticket 18 — Realtime turn sync
 
 ### Goal
 
-Keep all players aligned.
+Keep all players synchronized without leaking hidden data.
 
-### Tasks
+### Sync:
 
-* Sync:
-
-  * current player
-  * dice state
-  * kept dice
-  * turn end
+* active player
+* kept dice
+* hidden dice count
+* turn finished state
+* reveal phase
 
 ### Acceptance Criteria
 
-* No desync between players
+* All players stay in sync
+* Secret dice stay secret until reveal
 
 ---
 
-## Ticket 18 — Handle reconnect during turn
+## Ticket 19 — Handle reconnect during a turn
 
 ### Goal
 
-Avoid breaking the game.
+Restore correct state after refresh or reconnect.
 
 ### Tasks
 
-* Restore current turn state on reconnect
-* Ensure player continues correctly
+* Restore private state for reconnecting active player
+* Restore public table view for opponents
+* Preserve hidden information correctly
 
 ### Acceptance Criteria
 
-* Reconnecting player sees correct dice state
+* Reconnect does not reveal hidden dice to others
 
 ---
 
-## Ticket 19 — Test gameplay flow
+## Ticket 20 — Test gameplay flow
 
 ### Manual Tests
 
-* [ ] Player rolls dice
-* [ ] Player keeps at least one die
-* [ ] Player rolls remaining dice
-* [ ] Player finishes turn
-* [ ] Turn moves to next player
-* [ ] Other players cannot act
-* [ ] Dice sync correctly between players
-* [ ] Hidden die works
+* [ ] Active player rolls dice
+* [ ] Other players do not see rolled dice values
+* [ ] Active player keeps one or more dice
+* [ ] Kept dice become visible to everyone
+* [ ] Active player rolls remaining dice
+* [ ] Active player can hide the last die on final roll
+* [ ] Other players only see placeholders for hidden dice
+* [ ] Turn finishes correctly
+* [ ] After all players finish, all dice are revealed
+* [ ] Reveal data matches actual stored dice
 
 ---
 
@@ -420,6 +482,8 @@ server/src/modules/game/
 ├─ game-engine.ts
 ├─ turn-manager.ts
 ├─ dice.service.ts
+├─ public-turn-view.ts
+├─ reveal.service.ts
 ├─ game.types.ts
 ```
 
@@ -430,31 +494,38 @@ client/src/components/game/
 ├─ DiceTray.tsx
 ├─ Die.tsx
 ├─ TurnPanel.tsx
+├─ HiddenDie.tsx
+├─ RevealModal.tsx
 ```
 
 ---
 
 # ⚠️ Risks
 
-* Turn desync between players
-* Dice state inconsistencies
-* Invalid keep/roll sequences
-* Hidden die bugs
-* Reconnect issues mid-turn
+* Secret dice leaking to other players
+* Turn state desync
+* Wrong timing for reveal phase
+* Hidden last die being shown too early
+* Reconnect exposing private data
 
 ---
 
 # 🛠️ Notes
 
-Focus ONLY on gameplay flow:
+Sprint 4 is about:
 
-Do NOT implement:
+* turn flow
+* hidden information
+* reveal phase
 
-* scoring
-* lives
-* winner detection
+Do **not** resolve scoring or life loss here.
+That belongs in Sprint 5.
 
-That comes in Sprint 5
+Sprint 4 should end with:
+
+* all players finishing their turns one by one
+* all hidden dice revealed
+* round data ready for scoring
 
 ---
 
@@ -462,21 +533,23 @@ That comes in Sprint 5
 
 Sprint 4 is complete when:
 
-* players can take turns
-* dice can be rolled and kept
-* rules are enforced (keep at least 1 die)
-* turn flow works correctly
-* UI updates in realtime
-* hidden die feature works
+* players take turns one at a time
+* active player can roll and keep dice
+* player must keep at least one die after each roll
+* opponents only see kept dice
+* last die can be hidden on final roll
+* all hidden dice are revealed only at end of round
+* round state syncs correctly in realtime
 
 ---
 
 # 👉 Next Step
 
-Sprint 5 = **Game Rules & Winning**
+Sprint 5 = **Scoring, Lives, Tie-Breakers, and Winner**
 
-* scoring system
-* lives system
-* tie-breakers
-* player elimination
-* final winner
+* score only after reveal
+* compare all finished turns
+* loser loses life/lives
+* resolve ties
+* eliminate players
+* detect winner
