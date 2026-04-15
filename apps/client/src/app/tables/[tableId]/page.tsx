@@ -10,7 +10,7 @@ type Player = {
   name: string
   keptDice?: number[]
   remainingDice?: number[]
-  selectedThisRoll?: number
+
   hiddenDice?: number[] | null
   hasFinished?: boolean
 }
@@ -137,11 +137,7 @@ export default function TablePage({ params }: Props) {
     ? table.players.find((player) => player.id === me?.id)
     : null
   const rolledDice = activePlayer?.remainingDice ?? []
-  const hasSelectedFromCurrentRoll = (activePlayer?.selectedThisRoll ?? 0) > 0
-  const canRoll =
-    isMyTurn &&
-    !activePlayer?.hasFinished &&
-    (rolledDice.length === 0 || hasSelectedFromCurrentRoll)
+
   const canHide = isMyTurn && rolledDice.length > 0
 
   return (

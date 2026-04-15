@@ -26,7 +26,7 @@ function createTurnPlayer(player: { id: string; name: string }) {
     ...player,
     keptDice: [] as number[],
     remainingDice: [] as number[],
-    selectedThisRoll: 0,
+
     hiddenDice: null as number[] | null,
     hasFinished: false,
   }
@@ -118,7 +118,7 @@ app.post("/tables/:id/join", (req, res) => {
       ...p,
       keptDice: [],
       remainingDice: [],
-      selectedThisRoll: 0,
+
       hiddenDice: null,
       hasFinished: false,
     }))
@@ -193,7 +193,7 @@ app.post("/tables/:id/keep", (req, res) => {
 
   const [keptDie] = player.remainingDice.splice(dieIndex, 1)
   player.keptDice.push(keptDie)
-  player.selectedThisRoll = (player.selectedThisRoll ?? 0) + 1
+
 
   if (player.remainingDice.length === 0) {
     player.hasFinished = true
@@ -226,20 +226,13 @@ app.post("/tables/:id/roll", (req, res) => {
     return res.status(400).json({ error: "Turn is already finished" })
   }
 
-  if (
-    Array.isArray(player.remainingDice) &&
-    player.remainingDice.length > 0 &&
-    (player.selectedThisRoll ?? 0) === 0
-  ) {
+
     return res
       .status(400)
       .json({ error: "You must keep at least one die or hide before rolling again" })
   }
 
-  const availableDice =
-    Array.isArray(player.remainingDice) && player.remainingDice.length > 0
-      ? player.remainingDice.length
-      : 5 - player.keptDice.length
+
   if (availableDice <= 0) {
     return res.status(400).json({ error: "No dice left to roll" })
   }
@@ -248,7 +241,6 @@ app.post("/tables/:id/roll", (req, res) => {
     { length: availableDice },
     () => Math.floor(Math.random() * 6) + 1
   )
-  player.selectedThisRoll = 0
 
   res.json(table)
 })
@@ -278,7 +270,7 @@ app.post("/tables/:id/hide", (req, res) => {
   // gem skjulte terninger og afslut tur
   player.hiddenDice = [...player.remainingDice]
   player.remainingDice = []
-  player.selectedThisRoll = 0
+
   player.hasFinished = true
 
   // 🔄 næste spiller / afslut runde
