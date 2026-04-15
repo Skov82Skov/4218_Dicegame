@@ -123,36 +123,49 @@ export async function nextTurn(tableId: string) {
 
   return handleResponse(response)
 }
-export async function keepRoll(
+export async function keepDie(
   tableId: string,
   playerId: string,
-  dice: number[]
+  dieIndex: number
 ) {
   const response = await fetch(`${API_BASE_URL}/tables/${tableId}/keep`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ playerId, dice }),
+    body: JSON.stringify({ playerId, dieIndex }),
   })
 
   if (!response.ok) {
-    throw new Error("Failed to keep roll")
+    throw new Error("Failed to keep die")
   }
 
   return handleResponse(response)
 }
-export async function hideRoll(
-  tableId: string,
-  playerId: string,
-  dice: number[]
-) {
+
+export async function rollTurnDice(tableId: string, playerId: string) {
+  const response = await fetch(`${API_BASE_URL}/tables/${tableId}/roll`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ playerId }),
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to roll dice")
+  }
+
+  return handleResponse(response)
+}
+
+export async function hideRoll(tableId: string, playerId: string) {
   const response = await fetch(`${API_BASE_URL}/tables/${tableId}/hide`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ playerId, dice }),
+    body: JSON.stringify({ playerId }),
   })
 
   if (!response.ok) {
