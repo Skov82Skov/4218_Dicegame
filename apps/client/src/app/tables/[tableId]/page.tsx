@@ -137,6 +137,7 @@ export default function TablePage({ params }: Props) {
     ? table.players.find((player) => player.id === me?.id)
     : null
   const rolledDice = activePlayer?.remainingDice ?? []
+  const canRoll = isMyTurn && rolledDice.length === 0
 
   const canHide = isMyTurn && rolledDice.length > 0
 
