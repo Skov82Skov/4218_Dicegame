@@ -226,12 +226,14 @@ app.post("/tables/:id/roll", (req, res) => {
     return res.status(400).json({ error: "Turn is already finished" })
   }
 
-
+  if (Array.isArray(player.remainingDice) && player.remainingDice.length > 0) {
     return res
       .status(400)
       .json({ error: "You must keep at least one die or hide before rolling again" })
   }
 
+  const keptDiceCount = Array.isArray(player.keptDice) ? player.keptDice.length : 0
+  const availableDice = 6 - keptDiceCount
 
   if (availableDice <= 0) {
     return res.status(400).json({ error: "No dice left to roll" })
