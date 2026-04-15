@@ -11,6 +11,8 @@ type Player = {
   keptDice?: number[]
   remainingDice?: number[]
   score?: number
+  lives?: number
+  isEliminated?: boolean
   hiddenDice?: number[] | null
   hasFinished?: boolean
 }
@@ -23,6 +25,7 @@ type Table = {
   status: string
   currentPlayerIndex?: number
   round?: number
+  winnerId?: string
 }
 
 type Props = {
@@ -144,6 +147,12 @@ export default function TablePage({ params }: Props) {
     (rolledDice.length === 0 || keptDiceCount > 0)
 
   const canHide = isMyTurn && rolledDice.length > 0
+  const winner = table.winnerId
+    ? table.players.find((player) => player.id === table.winnerId)
+    : null
+  const amIEliminated = Boolean(
+    me && table.players.find((player) => player.id === me.id)?.isEliminated
+  )
 
   return (
     <main
@@ -201,6 +210,9 @@ export default function TablePage({ params }: Props) {
               <div style={{ marginTop: "0.25rem", fontSize: "12px" }}>
                 Score: {player.score ?? 0}
               </div>
+              <div style={{ marginTop: "0.25rem", fontSize: "12px" }}>
+                Lives: {player.lives ?? 0} {player.isEliminated ? "💀" : "❤️"}
+              </div>
             </div>
           )
         })}
@@ -216,9 +228,21 @@ export default function TablePage({ params }: Props) {
         </p>
       )}
 
+      {table.status === "finished" && (
+        <p style={{ marginTop: "1rem", fontWeight: "bold" }}>
+          🏆 Winner: {winner?.name ?? "Unknown player"}
+        </p>
+      )}
+
+      {amIEliminated && table.status !== "finished" && (
+        <p style={{ marginTop: "1rem" }}>
+          You are eliminated and now spectating. You can wait or leave the table.
+        </p>
+      )}
+
       {table.status === "playing" && (
   <div style={{ marginTop: "2rem", textAlign: "center" }}>
-    {isMyTurn ? (
+    {isMyTurn && !amIEliminated ? (
       <>
         <button onClick={handleRoll} disabled={!canRoll}>
           🎲 Roll available dice
