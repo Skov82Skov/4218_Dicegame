@@ -20,15 +20,36 @@ app.get("/health", (req, res) => {
 })
 
 let tables: any[] = []
+const TOTAL_DICE = 5
+
+function calculateScore(dice: number[]) {
+  const values = [...dice]
+  const fourIndex = values.indexOf(4)
+  const twoIndex = values.indexOf(2)
+
+  if (fourIndex === -1 || twoIndex === -1) {
+    return 0
+  }
+
+  values.splice(fourIndex, 1)
+  const adjustedTwoIndex = values.indexOf(2)
+  if (adjustedTwoIndex === -1) {
+    return 0
+  }
+  values.splice(adjustedTwoIndex, 1)
+
+  return values.reduce((sum, value) => sum + value, 0)
+}
 
 function createTurnPlayer(player: { id: string; name: string }) {
   return {
     ...player,
     keptDice: [] as number[],
     remainingDice: [] as number[],
-
+    canReroll: false,
     hiddenDice: null as number[] | null,
     hasFinished: false,
+    score: 0,
   }
 }
 
@@ -118,9 +139,10 @@ app.post("/tables/:id/join", (req, res) => {
       ...p,
       keptDice: [],
       remainingDice: [],
-
+      canReroll: false,
       hiddenDice: null,
       hasFinished: false,
+      score: 0,
     }))
 
     console.log("Game started on table:", table.id)
@@ -193,9 +215,11 @@ app.post("/tables/:id/keep", (req, res) => {
 
   const [keptDie] = player.remainingDice.splice(dieIndex, 1)
   player.keptDice.push(keptDie)
+  player.canReroll = true
 
 
   if (player.remainingDice.length === 0) {
+    player.score = calculateScore(player.keptDice)
     player.hasFinished = true
     moveToNextPlayer(table)
   }
@@ -226,14 +250,16 @@ app.post("/tables/:id/roll", (req, res) => {
     return res.status(400).json({ error: "Turn is already finished" })
   }
 
-  if (Array.isArray(player.remainingDice) && player.remainingDice.length > 0) {
-    return res
-      .status(400)
-      .json({ error: "You must keep at least one die or hide before rolling again" })
+  const keptDiceCount = Array.isArray(player.keptDice) ? player.keptDice.length : 0
+  const hasUnkeptDice = Array.isArray(player.remainingDice) && player.remainingDice.length > 0
+
+  if (hasUnkeptDice && !player.canReroll) {
+    return res.status(400).json({ error: "Keep at least one die before rolling again" })
   }
 
-  const keptDiceCount = Array.isArray(player.keptDice) ? player.keptDice.length : 0
-  const availableDice = 6 - keptDiceCount
+  const availableDice = hasUnkeptDice
+    ? player.remainingDice.length
+    : TOTAL_DICE - keptDiceCount
 
   if (availableDice <= 0) {
     return res.status(400).json({ error: "No dice left to roll" })
@@ -243,6 +269,7 @@ app.post("/tables/:id/roll", (req, res) => {
     { length: availableDice },
     () => Math.floor(Math.random() * 6) + 1
   )
+  player.canReroll = false
 
   res.json(table)
 })
@@ -272,6 +299,8 @@ app.post("/tables/:id/hide", (req, res) => {
   // gem skjulte terninger og afslut tur
   player.hiddenDice = [...player.remainingDice]
   player.remainingDice = []
+  const finalDice = [...player.keptDice, ...player.hiddenDice]
+  player.score = calculateScore(finalDice)
 
   player.hasFinished = true
 
