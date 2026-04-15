@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getTable, leaveTable, keepRoll, hideRoll } from "../../../lib/api"
+import { getTable, leaveTable, keepDie, hideRoll, rollTurnDice } from "../../../lib/api"
 import { getPlayerIdentity } from "../../../lib/storage"
 
 type Player = {
   id: string
   name: string
-  visibleRolls?: number[][]
-  hiddenRoll?: number[] | null
+  keptDice?: number[]
+  remainingDice?: number[]
+  hiddenDice?: number[] | null
   hasFinished?: boolean
 }
 
@@ -20,6 +21,7 @@ type Table = {
   players: Player[]
   status: string
   currentPlayerIndex?: number
+  round?: number
 }
 
 type Props = {
@@ -33,39 +35,40 @@ export default function TablePage({ params }: Props) {
 
   const [table, setTable] = useState<Table | null>(null)
   const [me, setMe] = useState<{ id: string; name: string } | null>(null)
-  const [dice, setDice] = useState<number[]>([])
   const [loading, setLoading] = useState(true)
 
-  function rollDice() {
-  const newDice = Array.from({ length: 5 }, () =>
-    Math.floor(Math.random() * 6) + 1
-  )
+  async function handleRoll() {
+    if (!me) return
 
-  setDice(newDice)
-}
-async function handleKeep() {
-  if (!me || dice.length === 0) return
-
-  try {
-    await keepRoll(params.tableId, me.id, dice)
-    setDice([])
-  } catch (error) {
-    console.error("Failed to keep roll", error)
+    try {
+      const updatedTable = await rollTurnDice(params.tableId, me.id)
+      setTable(updatedTable)
+    } catch (error) {
+      console.error("Failed to roll dice", error)
+    }
   }
-}
 
-async function handleHide() {
-  if (!me || dice.length === 0) return
+  async function handleKeep(dieIndex: number) {
+    if (!me) return
 
-  try {
-    await hideRoll(params.tableId, me.id, dice)
-    setDice([])
-  } catch (error) {
-    console.error("Failed to hide roll", error)
+    try {
+      const updatedTable = await keepDie(params.tableId, me.id, dieIndex)
+      setTable(updatedTable)
+    } catch (error) {
+      console.error("Failed to keep die", error)
+    }
   }
-}
 
+  async function handleHide() {
+    if (!me) return
 
+    try {
+      const updatedTable = await hideRoll(params.tableId, me.id)
+      setTable(updatedTable)
+    } catch (error) {
+      console.error("Failed to hide roll", error)
+    }
+  }
 
   async function handleLeave() {
     if (!me) return
@@ -129,6 +132,12 @@ async function handleHide() {
     me &&
     table.currentPlayerIndex !== undefined &&
     table.players[table.currentPlayerIndex]?.id === me.id
+  const activePlayer = isMyTurn
+    ? table.players.find((player) => player.id === me?.id)
+    : null
+  const rolledDice = activePlayer?.remainingDice ?? []
+  const canRoll = isMyTurn && rolledDice.length === 0 && !activePlayer?.hasFinished
+  const canHide = isMyTurn && rolledDice.length > 0
 
   return (
     <main
@@ -180,6 +189,9 @@ async function handleHide() {
               }}
             >
               {player.name} {isCurrent && "🎯"}
+              <div style={{ marginTop: "0.35rem", fontSize: "12px" }}>
+                Kept: {(player.keptDice ?? []).join(", ") || "-"}
+              </div>
             </div>
           )
         })}
@@ -199,21 +211,37 @@ async function handleHide() {
   <div style={{ marginTop: "2rem", textAlign: "center" }}>
     {isMyTurn ? (
       <>
-        <button onClick={rollDice}>🎲 Roll</button>
+        <button onClick={handleRoll} disabled={!canRoll}>
+          🎲 Roll available dice
+        </button>
 
-        {dice.length > 0 && (
+        {rolledDice.length > 0 && (
           <>
             <div style={{ marginTop: "1rem", fontSize: "2rem" }}>
-              {dice.map((d, i) => (
-                <span key={i} style={{ marginRight: "10px" }}>
+              {rolledDice.map((d, i) => (
+                <button
+                  key={`${i}-${d}`}
+                  onClick={() => handleKeep(i)}
+                  style={{
+                    marginRight: "10px",
+                    fontSize: "1.5rem",
+                    cursor: "pointer",
+                    borderRadius: "8px",
+                    border: "1px solid #333",
+                    padding: "0.35rem 0.5rem",
+                  }}
+                >
                   🎲 {d}
-                </span>
+                </button>
               ))}
             </div>
 
-            <div style={{ marginTop: "1rem" }}>
-              <button onClick={handleKeep}>✅ KEEP</button>
-              <button onClick={handleHide} style={{ marginLeft: "1rem" }}>
+            <p style={{ marginTop: "0.75rem", fontSize: "14px" }}>
+              Click dice to keep them. Kept dice are visible to everyone.
+            </p>
+
+            <div style={{ marginTop: "0.5rem" }}>
+              <button onClick={handleHide} disabled={!canHide} style={{ marginLeft: "1rem" }}>
                 🙈 HIDE
               </button>
             </div>
