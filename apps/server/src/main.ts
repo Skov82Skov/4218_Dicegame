@@ -23,6 +23,7 @@ let tables: any[] = []
 const TOTAL_DICE = 5
 const START_LIVES = 6
 const MAX_SCORE_PENALTY_THRESHOLD = 18
+const TURN_TIMEOUT_MS = 30_000
 
 function calculateScore(dice: number[]) {
   const values = [...dice]
@@ -70,6 +71,43 @@ function getActivePlayers(table: any) {
   return table.players.filter((player: any) => player.lives > 0 && !player.isEliminated)
 }
 
+function setTurnDeadline(table: any) {
+  if (typeof table.currentPlayerIndex !== "number") {
+    table.turnStartedAt = undefined
+    table.turnExpiresAt = undefined
+    return
+  }
+
+  table.turnStartedAt = Date.now()
+  table.turnExpiresAt = table.turnStartedAt + TURN_TIMEOUT_MS
+}
+
+function resolveLowestLoserByTieBreak(roundLosers: any[]) {
+  if (roundLosers.length <= 1) {
+    return roundLosers[0]
+  }
+
+  let tiedPlayers = [...roundLosers]
+  const tieBreakRounds: { rolls: { playerId: string; name: string; roll: number }[] }[] = []
+
+  while (tiedPlayers.length > 1) {
+    const rolls = tiedPlayers.map((player) => ({
+      playerId: player.id,
+      name: player.name,
+      roll: Math.floor(Math.random() * 6) + 1,
+    }))
+    tieBreakRounds.push({ rolls })
+
+    const minRoll = Math.min(...rolls.map((item) => item.roll))
+    const nextTiedPlayerIds = new Set(
+      rolls.filter((item) => item.roll === minRoll).map((item) => item.playerId)
+    )
+    tiedPlayers = tiedPlayers.filter((player) => nextTiedPlayerIds.has(player.id))
+  }
+
+  return { loser: tiedPlayers[0], tieBreakRounds }
+}
+
 function resolveRound(table: any) {
   const activePlayers = getActivePlayers(table)
   if (activePlayers.length <= 1) {
@@ -91,12 +129,33 @@ function resolveRound(table: any) {
   const roundLowScore = Math.min(...activePlayers.map((player: any) => player.score))
   const roundLosers = activePlayers.filter((player: any) => player.score === roundLowScore)
   const lifePenalty = roundHighScore >= MAX_SCORE_PENALTY_THRESHOLD ? 2 : 1
+  const loserResolution = resolveLowestLoserByTieBreak(roundLosers)
+  const loser = "loser" in loserResolution ? loserResolution.loser : loserResolution
+  const tieBreakRounds = "tieBreakRounds" in loserResolution ? loserResolution.tieBreakRounds : []
 
-  for (const loser of roundLosers) {
-    loser.lives = Math.max(0, loser.lives - lifePenalty)
-    if (loser.lives === 0) {
-      loser.isEliminated = true
-    }
+  loser.lives = Math.max(0, loser.lives - lifePenalty)
+  if (loser.lives === 0) {
+    loser.isEliminated = true
+  }
+
+  table.lastRoundSummary = {
+    round: table.round ?? 1,
+    scores: activePlayers.map((player: any) => ({
+      playerId: player.id,
+      name: player.name,
+      score: player.score,
+      lives: player.lives,
+      isEliminated: Boolean(player.isEliminated),
+    })),
+    lowScore: roundLowScore,
+    loser: {
+      playerId: loser.id,
+      name: loser.name,
+      lifePenalty,
+      remainingLives: loser.lives,
+      eliminated: Boolean(loser.isEliminated),
+    },
+    tieBreakRounds,
   }
 
   const survivors = getActivePlayers(table)
@@ -104,6 +163,7 @@ function resolveRound(table: any) {
     table.status = "finished"
     table.currentPlayerIndex = undefined
     table.winnerId = survivors[0]?.id
+    setTurnDeadline(table)
     return
   }
 
@@ -114,6 +174,7 @@ function resolveRound(table: any) {
   table.round = (table.round ?? 1) + 1
   table.status = "playing"
   table.currentPlayerIndex = table.players.findIndex((player: any) => player.id === survivors[0].id)
+  setTurnDeadline(table)
 }
 
 function moveToNextPlayer(table: any) {
@@ -134,13 +195,55 @@ function moveToNextPlayer(table: any) {
       !nextPlayer.hasFinished
     ) {
       table.currentPlayerIndex = nextIndex
+      setTurnDeadline(table)
       return
     }
   }
 
   table.currentPlayerIndex = undefined
+  setTurnDeadline(table)
   table.status = "round_finished"
   resolveRound(table)
+}
+
+function removePlayerFromTable(tableId: string, playerId: string) {
+  const table = tables.find((t) => t.id === tableId)
+  if (!table) {
+    return null
+  }
+
+  table.players = table.players.filter((p: any) => p.id !== playerId)
+
+  if (table.players.length === 0) {
+    tables = tables.filter((t) => t.id !== tableId)
+    return { deleted: true }
+  }
+
+  if (table.players.length === 1) {
+    table.status = "finished"
+    table.currentPlayerIndex = undefined
+    table.winnerId = table.players[0].id
+    setTurnDeadline(table)
+    return table
+  }
+
+  if (table.players.length < table.maxPlayers && table.status !== "finished") {
+    table.status = "waiting"
+    table.currentPlayerIndex = undefined
+    setTurnDeadline(table)
+    return table
+  }
+
+  if (table.status === "playing") {
+    if (typeof table.currentPlayerIndex !== "number") {
+      table.currentPlayerIndex = 0
+    } else if (table.currentPlayerIndex >= table.players.length) {
+      table.currentPlayerIndex = 0
+    }
+    setTurnDeadline(table)
+  }
+
+  return table
 }
 
 // 🔍 Hent alle borde
@@ -173,6 +276,9 @@ app.post("/tables", (req, res) => {
     currentPlayerIndex: undefined,
     round: 1,
     winnerId: undefined as string | undefined,
+    turnStartedAt: undefined as number | undefined,
+    turnExpiresAt: undefined as number | undefined,
+    lastRoundSummary: undefined,
   }
 
   tables.push(table)
@@ -213,6 +319,7 @@ app.post("/tables/:id/join", (req, res) => {
       isEliminated: false,
     }))
     table.players.forEach((p: any) => resetPlayerForRound(p))
+    setTurnDeadline(table)
 
     console.log("Game started on table:", table.id)
     console.log("START PLAYER INDEX:", table.currentPlayerIndex)
@@ -224,40 +331,37 @@ app.post("/tables/:id/join", (req, res) => {
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`)
 })
+
+setInterval(() => {
+  const now = Date.now()
+  for (const table of tables) {
+    if (
+      table.status === "playing" &&
+      typeof table.currentPlayerIndex === "number" &&
+      typeof table.turnExpiresAt === "number" &&
+      now >= table.turnExpiresAt
+    ) {
+      const timedOutPlayer = table.players[table.currentPlayerIndex]
+      if (timedOutPlayer) {
+        console.log(`Player ${timedOutPlayer.name} auto-left table ${table.id} after timeout`)
+        removePlayerFromTable(table.id, timedOutPlayer.id)
+      }
+    }
+  }
+}, 1000)
+
 app.post("/tables/:id/leave", (req, res) => {
   const { id } = req.params
   const { playerId } = req.body
 
-  const table = tables.find((t) => t.id === id)
-
-  if (!table) {
+  const result = removePlayerFromTable(id, playerId)
+  if (!result) {
     return res.status(404).json({ error: "Table not found" })
   }
-
-  // ❌ fjern spiller
-  table.players = table.players.filter((p: any) => p.id !== playerId)
-
-  // 🔄 hvis ingen spillere → slet bord
-  if (table.players.length === 0) {
-    tables = tables.filter((t) => t.id !== id)
+  if ("deleted" in result) {
     return res.json({ message: "Table deleted" })
   }
-
-  // If one player remains after someone leaves, that player wins.
-  if (table.players.length === 1) {
-    table.status = "finished"
-    table.currentPlayerIndex = undefined
-    table.winnerId = table.players[0].id
-    return res.json(table)
-  }
-
-  // If the game is not finished and table is under-filled, wait for players.
-  if (table.players.length < table.maxPlayers && table.status !== "finished") {
-    table.status = "waiting"
-    table.currentPlayerIndex = undefined
-  }
-
-  res.json(table)
+  res.json(result)
 })
 app.post("/tables/:id/keep", (req, res) => {
   const { id } = req.params
@@ -297,7 +401,7 @@ app.post("/tables/:id/keep", (req, res) => {
   const [keptDie] = player.remainingDice.splice(dieIndex, 1)
   player.keptDice.push(keptDie)
   player.canReroll = true
-
+  setTurnDeadline(table)
 
   if (player.remainingDice.length === 0) {
     player.score = calculateScore(player.keptDice)
@@ -355,6 +459,7 @@ app.post("/tables/:id/roll", (req, res) => {
     () => Math.floor(Math.random() * 6) + 1
   )
   player.canReroll = false
+  setTurnDeadline(table)
 
   res.json(table)
 })
