@@ -509,17 +509,26 @@ app.post("/tables/:id/hide", (req, res) => {
     return res.status(400).json({ error: "Not your turn" })
   }
 
-  if (!Array.isArray(player.remainingDice) || player.remainingDice.length === 0) {
-    return res.status(400).json({ error: "No rolled dice to hide" })
-  }
-
   if (player.lives <= 0 || player.isEliminated) {
     return res.status(400).json({ error: "Eliminated players cannot hide" })
   }
 
-  // gem skjulte terninger og afslut tur
-  player.hiddenDice = [...player.remainingDice]
+  if ((player.keptDice?.length ?? 0) > 0) {
+    return res.status(400).json({ error: "Roll and hide is only available before keeping dice" })
+  }
+
+  if (Array.isArray(player.remainingDice) && player.remainingDice.length > 0) {
+    return res.status(400).json({ error: "Roll and hide must be used before a visible roll" })
+  }
+
+  // Roll all available dice secretly and end turn.
+  const hiddenRoll = Array.from(
+    { length: TOTAL_DICE },
+    () => Math.floor(Math.random() * 6) + 1
+  )
+  player.hiddenDice = hiddenRoll
   player.remainingDice = []
+  player.canReroll = false
   const finalDice = [...player.keptDice, ...player.hiddenDice]
   player.score = calculateScore(finalDice)
 
@@ -593,11 +602,11 @@ app.post("/tables/:id/play-again", (req, res) => {
     return res.status(400).json({ error: "Need at least 2 players to play again" })
   }
 
-  table.status = "playing"
+  table.status = "waiting"
   table.round = 1
   table.winnerId = undefined
   table.lastRoundSummary = undefined
-  table.currentPlayerIndex = Math.floor(Math.random() * table.players.length)
+  table.currentPlayerIndex = undefined
   table.players = table.players.map((p: any) => ({
     ...p,
     lives: START_LIVES,
