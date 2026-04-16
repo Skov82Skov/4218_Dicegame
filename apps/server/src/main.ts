@@ -213,6 +213,36 @@ function moveToNextPlayer(table: any) {
   resolveRound(table)
 }
 
+function eliminatePlayerOnTimeout(table: any) {
+  if (table.status !== "playing" || typeof table.currentPlayerIndex !== "number") {
+    return
+  }
+
+  const timedOutPlayer = table.players[table.currentPlayerIndex]
+  if (!timedOutPlayer) {
+    return
+  }
+
+  timedOutPlayer.lives = 0
+  timedOutPlayer.isEliminated = true
+  timedOutPlayer.hasFinished = true
+  timedOutPlayer.keptDice = []
+  timedOutPlayer.remainingDice = []
+  timedOutPlayer.hiddenDice = null
+  timedOutPlayer.score = 0
+
+  const survivors = getActivePlayers(table)
+  if (survivors.length <= 1) {
+    table.status = "finished"
+    table.currentPlayerIndex = undefined
+    table.winnerId = survivors[0]?.id
+    setTurnDeadline(table)
+    return
+  }
+
+  moveToNextPlayer(table)
+}
+
 function removePlayerFromTable(tableId: string, playerId: string) {
   const table = tables.find((t) => t.id === tableId)
   if (!table) {
@@ -340,8 +370,8 @@ setInterval(() => {
     ) {
       const timedOutPlayer = table.players[table.currentPlayerIndex]
       if (timedOutPlayer) {
-        console.log(`Player ${timedOutPlayer.name} auto-left table ${table.id} after timeout`)
-        removePlayerFromTable(table.id, timedOutPlayer.id)
+        console.log(`Player ${timedOutPlayer.name} timed out and is now spectating at table ${table.id}`)
+        eliminatePlayerOnTimeout(table)
       }
     }
   }
