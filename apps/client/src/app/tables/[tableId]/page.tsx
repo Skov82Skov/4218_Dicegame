@@ -207,7 +207,11 @@ export default function TablePage({ params }: Props) {
     !activePlayer?.hasFinished &&
     (rolledDice.length === 0 || keptDiceCount > 0)
 
-  const canHide = isMyTurn && rolledDice.length > 0
+  const canHide =
+    Boolean(isMyTurn) &&
+    !activePlayer?.hasFinished &&
+    rolledDice.length === 0 &&
+    keptDiceCount === 0
   const winner = table.winnerId
     ? table.players.find((player) => player.id === table.winnerId)
     : null
@@ -396,6 +400,12 @@ export default function TablePage({ params }: Props) {
           🎲 Roll available dice
         </button>
 
+        <div style={{ marginTop: "0.5rem" }}>
+          <button onClick={handleHide} disabled={!canHide} style={{ marginLeft: "1rem" }}>
+            🙈 Roll and hide
+          </button>
+        </div>
+
         {rolledDice.length > 0 && (
           <>
             <div style={{ marginTop: "1rem", fontSize: "2rem" }}>
@@ -420,13 +430,12 @@ export default function TablePage({ params }: Props) {
             <p style={{ marginTop: "0.75rem", fontSize: "14px" }}>
               Click dice to keep them. Kept dice are visible to everyone.
             </p>
-
-            <div style={{ marginTop: "0.5rem" }}>
-              <button onClick={handleHide} disabled={!canHide} style={{ marginLeft: "1rem" }}>
-                🙈 HIDE
-              </button>
-            </div>
           </>
+        )}
+        {rolledDice.length === 0 && (
+          <p style={{ marginTop: "0.75rem", fontSize: "14px" }}>
+            Roll and hide can only be used as your first action in a turn.
+          </p>
         )}
       </>
     ) : (
