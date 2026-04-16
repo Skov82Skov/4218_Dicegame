@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getTable, leaveTable, keepDie, hideRoll, rollTurnDice } from "../../../lib/api"
+import {
+  getTable,
+  leaveTable,
+  keepDie,
+  hideRoll,
+  rollTurnDice,
+  playAgain,
+  setReady,
+} from "../../../lib/api"
 import { getPlayerIdentity } from "../../../lib/storage"
 
 type Player = {
@@ -15,6 +23,8 @@ type Player = {
   isEliminated?: boolean
   hiddenDice?: number[] | null
   hasFinished?: boolean
+  isHost?: boolean
+  isReady?: boolean
 }
 
 type Table = {
@@ -107,6 +117,30 @@ export default function TablePage({ params }: Props) {
     }
   }
 
+  async function handleToggleReady() {
+    if (!me || !table || table.status !== "waiting") return
+    const meAtTable = table.players.find((player) => player.id === me.id)
+    const currentReady = Boolean(meAtTable?.isReady)
+
+    try {
+      const updatedTable = await setReady(params.tableId, me.id, !currentReady)
+      setTable(updatedTable)
+    } catch (error) {
+      console.error("Failed to update ready status", error)
+    }
+  }
+
+  async function handlePlayAgain() {
+    if (!me) return
+
+    try {
+      const updatedTable = await playAgain(params.tableId, me.id)
+      setTable(updatedTable)
+    } catch (error) {
+      console.error("Failed to start new game", error)
+    }
+  }
+
   useEffect(() => {
     setMe(getPlayerIdentity())
   }, [])
@@ -184,6 +218,7 @@ export default function TablePage({ params }: Props) {
     typeof table.turnExpiresAt === "number"
       ? Math.max(0, Math.ceil((table.turnExpiresAt - now) / 1000))
       : null
+  const meAtTable = me ? table.players.find((player) => player.id === me.id) : null
 
   return (
     <main
@@ -235,6 +270,16 @@ export default function TablePage({ params }: Props) {
               }}
             >
               {player.name} {isCurrent && "🎯"}
+              {player.isHost && (
+                <div style={{ marginTop: "0.25rem", fontSize: "12px", fontWeight: "bold" }}>
+                  👑 Host
+                </div>
+              )}
+              {table.status === "waiting" && (
+                <div style={{ marginTop: "0.25rem", fontSize: "12px" }}>
+                  {player.isReady ? "✅ Ready" : "⌛ Not ready"}
+                </div>
+              )}
               <div style={{ marginTop: "0.35rem", fontSize: "12px" }}>
                 Kept: {(player.keptDice ?? []).join(", ") || "-"}
               </div>
@@ -265,9 +310,29 @@ export default function TablePage({ params }: Props) {
       )}
 
       {table.status === "finished" && (
-        <p style={{ marginTop: "1rem", fontWeight: "bold" }}>
-          🏆 Winner: {winner?.name ?? "Unknown player"}
-        </p>
+        <>
+          <p style={{ marginTop: "1rem", fontWeight: "bold" }}>
+            🏆 Winner: {winner?.name ?? "Unknown player"}
+          </p>
+          <div style={{ marginTop: "0.75rem" }}>
+            {meAtTable?.isHost ? (
+              <button onClick={handlePlayAgain}>🔁 Play Again</button>
+            ) : (
+              <p>Only the host can start a new game.</p>
+            )}
+          </div>
+        </>
+      )}
+
+      {table.status === "waiting" && meAtTable && (
+        <div style={{ marginTop: "1rem" }}>
+          <button onClick={handleToggleReady}>
+            {meAtTable.isReady ? "🙅 Unready" : "✅ Ready up"}
+          </button>
+          <p style={{ marginTop: "0.4rem", fontSize: "13px" }}>
+            Game starts automatically when table is full and everyone is ready.
+          </p>
+        </div>
       )}
 
       {amIEliminated && table.status !== "finished" && (

@@ -174,3 +174,35 @@ export async function hideRoll(tableId: string, playerId: string) {
 
   return handleResponse(response)
 }
+
+export async function setReady(tableId: string, playerId: string, isReady: boolean) {
+  const response = await fetch(`${API_BASE_URL}/tables/${tableId}/ready`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ playerId, isReady }),
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to update ready status")
+  }
+
+  return handleResponse(response)
+}
+
+export async function playAgain(tableId: string, playerId: string) {
+  const response = await fetch(`${API_BASE_URL}/tables/${tableId}/play-again`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ playerId }),
+  })
+
+  if (!response.ok) {
+    throw new Error("Failed to start a new game")
+  }
+
+  return handleResponse(response)
+}
