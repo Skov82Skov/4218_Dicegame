@@ -88,19 +88,24 @@ function resolveLowestLoserByTieBreak(roundLosers: any[]) {
   }
 
   let tiedPlayers = [...roundLosers]
-  const tieBreakRounds: { rolls: { playerId: string; name: string; roll: number }[] }[] = []
+  const tieBreakRounds: {
+    rolls: { playerId: string; name: string; dice: number[]; score: number }[]
+  }[] = []
 
   while (tiedPlayers.length > 1) {
     const rolls = tiedPlayers.map((player) => ({
       playerId: player.id,
       name: player.name,
-      roll: Math.floor(Math.random() * 6) + 1,
+      dice: Array.from({ length: TOTAL_DICE }, () => Math.floor(Math.random() * 6) + 1),
+    })).map((roll) => ({
+      ...roll,
+      score: calculateScore(roll.dice),
     }))
     tieBreakRounds.push({ rolls })
 
-    const minRoll = Math.min(...rolls.map((item) => item.roll))
+    const minRoll = Math.min(...rolls.map((item) => item.score))
     const nextTiedPlayerIds = new Set(
-      rolls.filter((item) => item.roll === minRoll).map((item) => item.playerId)
+      rolls.filter((item) => item.score === minRoll).map((item) => item.playerId)
     )
     tiedPlayers = tiedPlayers.filter((player) => nextTiedPlayerIds.has(player.id))
   }

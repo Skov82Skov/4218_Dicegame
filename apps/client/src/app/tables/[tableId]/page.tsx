@@ -44,7 +44,7 @@ type Table = {
       eliminated: boolean
     }
     tieBreakRounds?: {
-      rolls: { playerId: string; name: string; roll: number }[]
+      rolls: { playerId: string; name: string; dice: number[]; score: number }[]
     }[]
   }
 }
@@ -283,6 +283,7 @@ export default function TablePage({ params }: Props) {
             width: "100%",
             maxWidth: "720px",
             background: "#f7f0f0",
+            color: "#000000",
             border: "1px solid #d9c8c8",
             borderRadius: "8px",
             padding: "1rem",
@@ -306,12 +307,14 @@ export default function TablePage({ params }: Props) {
 
           {(table.lastRoundSummary.tieBreakRounds?.length ?? 0) > 0 && (
             <div style={{ marginTop: "0.65rem" }}>
-              <strong>Tie-break rolls:</strong>
+              <strong>Tie-break rolls (all 5 dice):</strong>
               <ul style={{ margin: "0.35rem 0 0 1rem" }}>
                 {table.lastRoundSummary.tieBreakRounds?.map((round, index) => (
                   <li key={`tiebreak-${index}`}>
                     Roll {index + 1}:{" "}
-                    {round.rolls.map((roll) => `${roll.name}(${roll.roll})`).join(", ")}
+                    {round.rolls
+                      .map((roll) => `${roll.name}[${roll.dice.join(", ")}] score ${roll.score}`)
+                      .join(", ")}
                   </li>
                 ))}
               </ul>
