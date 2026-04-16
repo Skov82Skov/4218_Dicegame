@@ -55,6 +55,8 @@ function createTurnPlayer(player: { id: string; name: string }) {
     score: 0,
     lives: START_LIVES,
     isEliminated: false,
+    isReady: false,
+    isHost: false,
   }
 }
 
@@ -232,6 +234,10 @@ function removePlayerFromTable(tableId: string, playerId: string) {
     return table
   }
 
+  if (!table.players.some((p: any) => p.isHost)) {
+    table.players[0].isHost = true
+  }
+
   if (table.players.length < table.maxPlayers && table.status !== "finished") {
     table.status = "waiting"
     table.currentPlayerIndex = undefined
@@ -272,11 +278,13 @@ app.get("/tables/:id", (req, res) => {
 app.post("/tables", (req, res) => {
   const { name, maxPlayers, player } = req.body
 
+  const host = createTurnPlayer(player)
+  host.isHost = true
   const table = {
     id: Date.now().toString(),
     name,
     maxPlayers,
-    players: [createTurnPlayer(player)],
+    players: [host],
     status: "waiting",
     currentPlayerIndex: undefined,
     round: 1,
@@ -313,22 +321,6 @@ app.post("/tables/:id/join", (req, res) => {
 
   // ✅ tilføj spiller
   table.players.push(createTurnPlayer(player))
-
-  // 🎯 auto start spil når fuldt
-  if (table.players.length === table.maxPlayers) {
-    table.status = "playing"
-    table.currentPlayerIndex = Math.floor(Math.random() * table.players.length)
-    table.players = table.players.map((p: any) => ({
-      ...p,
-      lives: typeof p.lives === "number" ? p.lives : START_LIVES,
-      isEliminated: false,
-    }))
-    table.players.forEach((p: any) => resetPlayerForRound(p))
-    setTurnDeadline(table)
-
-    console.log("Game started on table:", table.id)
-    console.log("START PLAYER INDEX:", table.currentPlayerIndex)
-  }
 
   res.json(table)
 })
@@ -505,6 +497,85 @@ app.post("/tables/:id/hide", (req, res) => {
 
   // 🔄 næste spiller / afslut runde
   moveToNextPlayer(table)
+
+  res.json(table)
+})
+
+app.post("/tables/:id/ready", (req, res) => {
+  const { id } = req.params
+  const { playerId, isReady } = req.body
+
+  const table = tables.find((t) => t.id === id)
+  if (!table) return res.status(404).json({ error: "Table not found" })
+
+  if (table.status !== "waiting") {
+    return res.status(400).json({ error: "Ready status can only be changed while waiting" })
+  }
+
+  const player = table.players.find((p: any) => p.id === playerId)
+  if (!player) return res.status(404).json({ error: "Player not found" })
+
+  player.isReady = Boolean(isReady)
+
+  const canStart =
+    table.players.length === table.maxPlayers &&
+    table.players.length >= 2 &&
+    table.players.every((p: any) => p.isReady)
+
+  if (canStart) {
+    table.status = "playing"
+    table.round = 1
+    table.winnerId = undefined
+    table.lastRoundSummary = undefined
+    table.currentPlayerIndex = Math.floor(Math.random() * table.players.length)
+    table.players = table.players.map((p: any) => ({
+      ...p,
+      lives: START_LIVES,
+      isEliminated: false,
+      isReady: false,
+    }))
+    table.players.forEach((p: any) => resetPlayerForRound(p))
+    setTurnDeadline(table)
+  }
+
+  res.json(table)
+})
+
+app.post("/tables/:id/play-again", (req, res) => {
+  const { id } = req.params
+  const { playerId } = req.body
+
+  const table = tables.find((t) => t.id === id)
+  if (!table) return res.status(404).json({ error: "Table not found" })
+
+  if (table.status !== "finished") {
+    return res.status(400).json({ error: "Game is not finished" })
+  }
+
+  const player = table.players.find((p: any) => p.id === playerId)
+  if (!player) return res.status(404).json({ error: "Player not found" })
+
+  if (!player.isHost) {
+    return res.status(403).json({ error: "Only host can start a new game" })
+  }
+
+  if (table.players.length < 2) {
+    return res.status(400).json({ error: "Need at least 2 players to play again" })
+  }
+
+  table.status = "playing"
+  table.round = 1
+  table.winnerId = undefined
+  table.lastRoundSummary = undefined
+  table.currentPlayerIndex = Math.floor(Math.random() * table.players.length)
+  table.players = table.players.map((p: any) => ({
+    ...p,
+    lives: START_LIVES,
+    isEliminated: false,
+    isReady: false,
+  }))
+  table.players.forEach((p: any) => resetPlayerForRound(p))
+  setTurnDeadline(table)
 
   res.json(table)
 })
