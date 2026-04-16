@@ -270,6 +270,11 @@ export default function TablePage({ params }: Props) {
               }}
             >
               {player.name} {isCurrent && "🎯"}
+              {isCurrent && table.status === "playing" && countdownSeconds !== null && (
+                <div style={{ marginTop: "0.25rem", fontSize: "12px", fontWeight: "bold" }}>
+                  {countdownSeconds}s
+                </div>
+              )}
               {player.isHost && (
                 <div style={{ marginTop: "0.25rem", fontSize: "12px", fontWeight: "bold" }}>
                   👑 Host
@@ -301,11 +306,6 @@ export default function TablePage({ params }: Props) {
       {table.currentPlayerIndex !== undefined && (
         <p>
           Current player: {table.players[table.currentPlayerIndex]?.name}
-        </p>
-      )}
-      {table.status === "playing" && countdownSeconds !== null && (
-        <p style={{ fontWeight: "bold", marginTop: "0.35rem" }}>
-          ⏱️ Turn timer: {countdownSeconds}s (auto leave at 0s)
         </p>
       )}
 
