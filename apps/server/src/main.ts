@@ -513,17 +513,24 @@ app.post("/tables/:id/hide", (req, res) => {
     return res.status(400).json({ error: "Eliminated players cannot hide" })
   }
 
-  if ((player.keptDice?.length ?? 0) > 0) {
-    return res.status(400).json({ error: "Roll and hide is only available before keeping dice" })
+  const keptDiceCount = Array.isArray(player.keptDice) ? player.keptDice.length : 0
+  const hasUnkeptDice = Array.isArray(player.remainingDice) && player.remainingDice.length > 0
+
+  if (hasUnkeptDice && !player.canReroll) {
+    return res.status(400).json({ error: "Keep at least one die before rolling and hiding again" })
   }
 
-  if (Array.isArray(player.remainingDice) && player.remainingDice.length > 0) {
-    return res.status(400).json({ error: "Roll and hide must be used before a visible roll" })
+  const availableDice = hasUnkeptDice
+    ? player.remainingDice.length
+    : TOTAL_DICE - keptDiceCount
+
+  if (availableDice <= 0) {
+    return res.status(400).json({ error: "No dice left to roll and hide" })
   }
 
   // Roll all available dice secretly and end turn.
   const hiddenRoll = Array.from(
-    { length: TOTAL_DICE },
+    { length: availableDice },
     () => Math.floor(Math.random() * 6) + 1
   )
   player.hiddenDice = hiddenRoll

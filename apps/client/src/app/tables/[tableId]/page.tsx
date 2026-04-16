@@ -210,8 +210,7 @@ export default function TablePage({ params }: Props) {
   const canHide =
     Boolean(isMyTurn) &&
     !activePlayer?.hasFinished &&
-    rolledDice.length === 0 &&
-    keptDiceCount === 0
+    (rolledDice.length === 0 || keptDiceCount > 0)
   const winner = table.winnerId
     ? table.players.find((player) => player.id === table.winnerId)
     : null
@@ -432,9 +431,9 @@ export default function TablePage({ params }: Props) {
             </p>
           </>
         )}
-        {rolledDice.length === 0 && (
+        {rolledDice.length === 0 && keptDiceCount === 0 && (
           <p style={{ marginTop: "0.75rem", fontSize: "14px" }}>
-            Roll and hide can only be used as your first action in a turn.
+            You can roll and hide at any point after a valid roll state.
           </p>
         )}
       </>
