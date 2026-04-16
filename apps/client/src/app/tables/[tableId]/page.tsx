@@ -26,6 +26,27 @@ type Table = {
   currentPlayerIndex?: number
   round?: number
   winnerId?: string
+  turnExpiresAt?: number
+  lastRoundSummary?: {
+    round: number
+    scores: {
+      playerId: string
+      name: string
+      score: number
+      lives: number
+      isEliminated: boolean
+    }[]
+    loser: {
+      playerId: string
+      name: string
+      lifePenalty: number
+      remainingLives: number
+      eliminated: boolean
+    }
+    tieBreakRounds?: {
+      rolls: { playerId: string; name: string; roll: number }[]
+    }[]
+  }
 }
 
 type Props = {
@@ -40,6 +61,7 @@ export default function TablePage({ params }: Props) {
   const [table, setTable] = useState<Table | null>(null)
   const [me, setMe] = useState<{ id: string; name: string } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [now, setNow] = useState(Date.now())
 
   async function handleRoll() {
     if (!me) return
@@ -115,6 +137,11 @@ export default function TablePage({ params }: Props) {
     }
   }, [table])
 
+  useEffect(() => {
+    const ticker = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(ticker)
+  }, [])
+
   if (loading) {
     return (
       <main style={{ padding: "2rem" }}>
@@ -153,6 +180,10 @@ export default function TablePage({ params }: Props) {
   const amIEliminated = Boolean(
     me && table.players.find((player) => player.id === me.id)?.isEliminated
   )
+  const countdownSeconds =
+    typeof table.turnExpiresAt === "number"
+      ? Math.max(0, Math.ceil((table.turnExpiresAt - now) / 1000))
+      : null
 
   return (
     <main
@@ -227,6 +258,11 @@ export default function TablePage({ params }: Props) {
           Current player: {table.players[table.currentPlayerIndex]?.name}
         </p>
       )}
+      {table.status === "playing" && countdownSeconds !== null && (
+        <p style={{ fontWeight: "bold", marginTop: "0.35rem" }}>
+          ⏱️ Turn timer: {countdownSeconds}s (auto leave at 0s)
+        </p>
+      )}
 
       {table.status === "finished" && (
         <p style={{ marginTop: "1rem", fontWeight: "bold" }}>
@@ -238,6 +274,50 @@ export default function TablePage({ params }: Props) {
         <p style={{ marginTop: "1rem" }}>
           You are eliminated and now spectating. You can wait or leave the table.
         </p>
+      )}
+
+      {table.lastRoundSummary && (
+        <section
+          style={{
+            marginTop: "1.5rem",
+            width: "100%",
+            maxWidth: "720px",
+            background: "#f7f0f0",
+            border: "1px solid #d9c8c8",
+            borderRadius: "8px",
+            padding: "1rem",
+          }}
+        >
+          <h3 style={{ marginTop: 0 }}>📊 Round {table.lastRoundSummary.round} overview</h3>
+          <p style={{ margin: "0.4rem 0" }}>
+            Loser: <strong>{table.lastRoundSummary.loser.name}</strong> (lost{" "}
+            {table.lastRoundSummary.loser.lifePenalty} life
+            {table.lastRoundSummary.loser.lifePenalty > 1 ? "s" : ""}, remaining:{" "}
+            {table.lastRoundSummary.loser.remainingLives})
+          </p>
+          <ul style={{ margin: "0.6rem 0 0 1rem" }}>
+            {table.lastRoundSummary.scores.map((result) => (
+              <li key={result.playerId}>
+                {result.name}: score {result.score}, lives {result.lives}{" "}
+                {result.isEliminated ? "💀" : ""}
+              </li>
+            ))}
+          </ul>
+
+          {(table.lastRoundSummary.tieBreakRounds?.length ?? 0) > 0 && (
+            <div style={{ marginTop: "0.65rem" }}>
+              <strong>Tie-break rolls:</strong>
+              <ul style={{ margin: "0.35rem 0 0 1rem" }}>
+                {table.lastRoundSummary.tieBreakRounds?.map((round, index) => (
+                  <li key={`tiebreak-${index}`}>
+                    Roll {index + 1}:{" "}
+                    {round.rolls.map((roll) => `${roll.name}(${roll.roll})`).join(", ")}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
       )}
 
       {table.status === "playing" && (
