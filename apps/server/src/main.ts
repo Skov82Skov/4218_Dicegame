@@ -23,7 +23,69 @@ let tables: any[] = []
 const TOTAL_DICE = 5
 const START_LIVES = 6
 const MAX_SCORE_PENALTY_THRESHOLD = 18
-const TURN_TIMEOUT_MS = 30_000
+const TURN_TIMEOUT_MS = 60_000
+const TABLE_NAME_POOL = [
+  "Tinget",
+  "Den Skæve Kande",
+  "Havnebaren",
+  "Kælderkroen",
+  "Den Gyldne Humle",
+  "Lygtepælen",
+  "Skipperstuen",
+  "Den Blå Lygte",
+  "Hjørnebodegaen",
+  "Mågestuen",
+  "Ankret",
+  "Brokælderen",
+  "Fadølsstuen",
+  "Den Rustne Nøgle",
+  "Stationskroen",
+  "Møllehjørnet",
+  "Den Røde Lanterne",
+  "Havneknajen",
+  "Sømandshjemmet",
+  "Piben og Kruset",
+  "Torvekroen",
+  "Ternen",
+  "Vestergade Bar",
+  "Skumfidusen",
+  "Bølgen Blå",
+  "Ravnebaren",
+  "Den Glade Hane",
+  "Kromutter",
+  "Fyrtårnet",
+  "Hesteskoen",
+  "Posthuset",
+  "Den Skæve Vært",
+  "Bænken",
+  "Kasket Karl",
+  "Lille Kro",
+  "Kompassets Ende",
+  "Bryggerstuen",
+  "Bajeren",
+  "Sømmet",
+  "Lygten",
+  "Den Sidste Skænk",
+  "Kruset",
+  "Svingdøren",
+  "Brolæggeren",
+  "Den Grønne Flaske",
+  "Skotøjet",
+  "Malt og Måne",
+  "Sølvankeret",
+  "Morgenvagten",
+  "Aftenstuen",
+  "Hjørnebrættet",
+  "Kaptajnens Hvil",
+  "Den Tørstige And",
+  "Lille Fredag",
+  "Barkassen",
+  "Tapperiet",
+  "Stalden",
+  "Kobberkruset",
+  "Vindrosen",
+  "Bøtten",
+]
 
 function calculateScore(dice: number[]) {
   const values = [...dice]
@@ -71,6 +133,43 @@ function resetPlayerForRound(player: any) {
 
 function getActivePlayers(table: any) {
   return table.players.filter((player: any) => player.lives > 0 && !player.isEliminated)
+}
+
+function findNextActivePlayerIndex(table: any, startIndex: number) {
+  if (!Array.isArray(table.players) || table.players.length === 0) {
+    return -1
+  }
+
+  for (let i = 0; i < table.players.length; i++) {
+    const nextIndex = (startIndex + i) % table.players.length
+    const nextPlayer = table.players[nextIndex]
+    if (nextPlayer && nextPlayer.lives > 0 && !nextPlayer.isEliminated) {
+      return nextIndex
+    }
+  }
+
+  return -1
+}
+
+function generateTableName() {
+  const usedNames = new Set(tables.map((table) => table.name))
+  const availableBaseNames = TABLE_NAME_POOL.filter((name) => !usedNames.has(name))
+
+  if (availableBaseNames.length > 0) {
+    const randomIndex = Math.floor(Math.random() * availableBaseNames.length)
+    return availableBaseNames[randomIndex]
+  }
+
+  const baseName = TABLE_NAME_POOL[Math.floor(Math.random() * TABLE_NAME_POOL.length)] ?? "Bodegaen"
+  let suffix = 2
+  let candidate = `${baseName} ${suffix}`
+
+  while (usedNames.has(candidate)) {
+    suffix += 1
+    candidate = `${baseName} ${suffix}`
+  }
+
+  return candidate
 }
 
 function setTurnDeadline(table: any) {
@@ -164,6 +263,22 @@ function resolveRound(table: any) {
     },
     tieBreakRounds,
   }
+  table.roundHistory = [
+    ...(Array.isArray(table.roundHistory) ? table.roundHistory : []),
+    {
+      round: table.round ?? 1,
+      loserName: loser.name,
+      lifePenalty,
+      hadTieBreak: tieBreakRounds.length > 0,
+      scores: activePlayers.map((player: any) => ({
+        playerId: player.id,
+        name: player.name,
+        score: player.score,
+        isLoser: player.id === loser.id,
+        isWinner: player.score === roundHighScore,
+      })),
+    },
+  ]
 
   const survivors = getActivePlayers(table)
   if (survivors.length <= 1) {
@@ -180,7 +295,10 @@ function resolveRound(table: any) {
 
   table.round = (table.round ?? 1) + 1
   table.status = "playing"
-  table.currentPlayerIndex = table.players.findIndex((player: any) => player.id === survivors[0].id)
+  const loserIndex = table.players.findIndex((player: any) => player.id === loser.id)
+  table.currentPlayerIndex = loserIndex >= 0
+    ? findNextActivePlayerIndex(table, loserIndex)
+    : table.players.findIndex((player: any) => player.id === survivors[0].id)
   setTurnDeadline(table)
 }
 
@@ -306,13 +424,13 @@ app.get("/tables/:id", (req, res) => {
 
 // ➕ Opret bord
 app.post("/tables", (req, res) => {
-  const { name, maxPlayers, player } = req.body
+  const { maxPlayers, player } = req.body
 
   const host = createTurnPlayer(player)
   host.isHost = true
   const table = {
     id: Date.now().toString(),
-    name,
+    name: generateTableName(),
     maxPlayers,
     players: [host],
     status: "waiting",
@@ -322,6 +440,19 @@ app.post("/tables", (req, res) => {
     turnStartedAt: undefined as number | undefined,
     turnExpiresAt: undefined as number | undefined,
     lastRoundSummary: undefined,
+    roundHistory: [] as {
+      round: number
+      loserName: string
+      lifePenalty: number
+      hadTieBreak: boolean
+      scores: {
+        playerId: string
+        name: string
+        score: number
+        isLoser: boolean
+        isWinner: boolean
+      }[]
+    }[],
   }
 
   tables.push(table)
@@ -573,6 +704,7 @@ app.post("/tables/:id/ready", (req, res) => {
     table.round = 1
     table.winnerId = undefined
     table.lastRoundSummary = undefined
+    table.roundHistory = []
     table.currentPlayerIndex = Math.floor(Math.random() * table.players.length)
     table.players = table.players.map((p: any) => ({
       ...p,
@@ -613,6 +745,7 @@ app.post("/tables/:id/play-again", (req, res) => {
   table.round = 1
   table.winnerId = undefined
   table.lastRoundSummary = undefined
+  table.roundHistory = []
   table.currentPlayerIndex = undefined
   table.players = table.players.map((p: any) => ({
     ...p,

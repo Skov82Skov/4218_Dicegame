@@ -23,7 +23,6 @@ export default function LobbyPage() {
   const [player, setPlayer] = useState<Player | null>(null)
   const [tables, setTables] = useState<Table[]>([])
   const [loading, setLoading] = useState(true)
-  const [tableName, setTableName] = useState("")
   const [maxPlayers, setMaxPlayers] = useState(2)
 
   useEffect(() => {
@@ -36,27 +35,37 @@ export default function LobbyPage() {
 
     setPlayer(savedPlayer)
 
+    let isMounted = true
+
     async function loadTables() {
       try {
         const data = await getTables()
-        setTables(data)
+        if (isMounted) {
+          setTables(data)
+        }
       } catch (error) {
         console.error("Failed to load tables", error)
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
 
     loadTables()
+    const intervalId = window.setInterval(loadTables, 2000)
+
+    return () => {
+      isMounted = false
+      window.clearInterval(intervalId)
+    }
   }, [router])
 
   async function handleCreateTable() {
     if (!player) return
-    if (!tableName.trim()) return
 
     try {
       const newTable = await createTable({
-        name: tableName.trim(),
         maxPlayers,
         player,
       })
@@ -91,14 +100,7 @@ export default function LobbyPage() {
 
       <div style={{ marginTop: "2rem", marginBottom: "2rem" }}>
         <h2>Create Table</h2>
-
-        <input
-          type="text"
-          placeholder="Table name"
-          value={tableName}
-          onChange={(e) => setTableName(e.target.value)}
-          style={{ padding: "0.5rem", marginRight: "1rem" }}
-        />
+        <p>Your table will automatically get a tavern name.</p>
 
         <select
           value={maxPlayers}

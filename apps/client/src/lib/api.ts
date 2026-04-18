@@ -44,7 +44,6 @@ export async function getTable(tableId: string) {
 
 // ➕ Opret table
 export async function createTable(data: {
-  name: string
   maxPlayers: number
   player: {
     id: string

@@ -24,3 +24,435 @@ main {
 }
 .muted { color: #cbd5e1; }
 .row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+.table-room {
+  min-height: 100vh;
+  width: 100%;
+  padding: 32px 24px 48px;
+  display: flex;
+  justify-content: center;
+  background:
+    radial-gradient(circle at top, rgba(255,255,255,0.2), transparent 28%),
+    linear-gradient(135deg, rgba(255,255,255,0.05), transparent 30%),
+    repeating-linear-gradient(
+      90deg,
+      #b98f60 0,
+      #b98f60 32px,
+      #c79e6e 32px,
+      #c79e6e 64px
+    );
+}
+
+.table-layout {
+  width: 100%;
+  max-width: 1320px;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.history-prompt {
+  color: #d7dee9;
+  font: 11px/1 "Trebuchet MS", "Segoe UI", sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+}
+
+.history-prompt__label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(232, 239, 247, 0.7);
+}
+
+.history-prompt__line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(232, 239, 247, 0.9);
+}
+
+.table-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.table-heading {
+  text-align: center;
+  color: #f8fafc;
+  text-shadow: 0 2px 16px rgba(0,0,0,0.28);
+}
+
+.table-heading h1 {
+  margin: 0;
+  font:
+    700 clamp(46px, 6vw, 74px)/0.95
+    "Old English Text MT",
+    "Blackletter",
+    "Goudy Text MT",
+    "Palatino Linotype",
+    serif;
+  letter-spacing: 0.01em;
+  color: #6b3f1f;
+  text-shadow:
+    0 1px 0 rgba(255,255,255,0.08),
+    0 3px 10px rgba(0,0,0,0.42);
+}
+
+.table-heading p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: rgba(241, 245, 249, 0.85);
+}
+
+.game-board {
+  position: relative;
+  width: min(960px, 100%);
+  aspect-ratio: 1.8 / 1;
+  border-radius: 999px;
+  padding: 22px;
+  background:
+    linear-gradient(180deg, #1f1f25 0%, #09090c 60%, #2b2b31 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,0.08),
+    inset 0 -8px 18px rgba(0,0,0,0.65),
+    0 28px 40px rgba(0,0,0,0.3);
+}
+
+.game-board__felt {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255,255,255,0.16), transparent 28%),
+    radial-gradient(circle at center, #0a63d6 0%, #0950ae 48%, #083d83 100%);
+  box-shadow:
+    inset 0 10px 30px rgba(255,255,255,0.12),
+    inset 0 -20px 36px rgba(0,0,0,0.38);
+  overflow: hidden;
+}
+
+.game-board__inner-ring {
+  position: absolute;
+  inset: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.seat-card {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  min-width: 126px;
+  max-width: 156px;
+  padding: 10px 12px 10px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(8, 13, 22, 0.92), rgba(19, 28, 43, 0.86));
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow:
+    0 12px 24px rgba(0,0,0,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+  color: #f8fafc;
+  backdrop-filter: blur(8px);
+}
+
+.seat-card--current {
+  background: linear-gradient(180deg, rgba(247, 193, 16, 0.94), rgba(228, 158, 14, 0.92));
+  color: #111827;
+  border-color: rgba(255,255,255,0.28);
+  box-shadow:
+    0 0 0 3px rgba(255,214,10,0.28),
+    0 14px 30px rgba(0,0,0,0.3);
+}
+
+.seat-card__name {
+  font: 700 16px/1.05 "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+.seat-card__meta {
+  margin-top: 8px;
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1.1;
+}
+
+.seat-card__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  margin-top: 8px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font: 700 11px/1 "Trebuchet MS", "Segoe UI", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #fff;
+}
+
+.seat-card__badge--turn {
+  background: linear-gradient(180deg, #ef4444, #b91c1c);
+}
+
+.seat-card__badge--host {
+  background: linear-gradient(180deg, #0f766e, #115e59);
+}
+
+.seat-card__badge--ready {
+  background: linear-gradient(180deg, #22c55e, #15803d);
+}
+
+.seat-card__badge--waiting {
+  background: linear-gradient(180deg, #64748b, #475569);
+}
+
+.felt-center {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  width: min(58%, 460px);
+  text-align: center;
+  color: rgba(241, 245, 249, 0.95);
+}
+
+.felt-center__pot {
+  font: 700 30px/1 "Trebuchet MS", "Segoe UI", sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.felt-center__round {
+  margin-top: 8px;
+  font-size: 14px;
+  color: rgba(241, 245, 249, 0.82);
+}
+
+.felt-center__dice-label {
+  margin-top: 20px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(241, 245, 249, 0.7);
+}
+
+.felt-center__dice {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-height: 44px;
+}
+
+.felt-die {
+  transition: transform 180ms ease, opacity 180ms ease;
+}
+
+.felt-die--rolling {
+  animation: felt-roll 0.9s cubic-bezier(.22,.61,.36,1);
+}
+
+.felt-die-button {
+  border: 2px solid rgba(250, 204, 21, 0.35);
+  border-radius: 12px;
+  padding: 4px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06));
+  cursor: pointer;
+  box-shadow: 0 10px 18px rgba(0,0,0,0.22);
+}
+
+.felt-die-button:hover {
+  transform: translateY(-1px);
+}
+
+.felt-die-button--selected {
+  transform: translateX(18px) scale(0.96);
+  opacity: 0.5;
+}
+
+.kept-die--new {
+  animation: kept-pop 0.7s cubic-bezier(.19,1,.22,1);
+}
+
+.action-panel {
+  width: min(760px, 100%);
+  border-radius: 24px;
+  padding: 18px 20px 20px;
+  background: linear-gradient(180deg, rgba(8, 12, 20, 0.94), rgba(18, 25, 39, 0.96));
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow:
+    0 22px 28px rgba(0,0,0,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+  color: #f8fafc;
+}
+
+.action-panel__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.action-panel__title {
+  font: 700 20px/1 "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+.action-panel__muted {
+  color: rgba(226,232,240,0.78);
+  font-size: 13px;
+}
+
+.action-panel__controls {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.action-button {
+  min-width: 190px;
+  border: none;
+  border-radius: 14px;
+  padding: 14px 18px;
+  color: #fff;
+  font: 700 14px/1 "Trebuchet MS", "Segoe UI", sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
+}
+
+.action-button--primary {
+  background: linear-gradient(180deg, #cf3527, #8f1612);
+}
+
+.action-button--secondary {
+  background: linear-gradient(180deg, #3e4f68, #263244);
+}
+
+.action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+  background: linear-gradient(180deg, #7c8797, #556070);
+}
+
+.action-panel__kept {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.action-panel__tray {
+  min-width: 220px;
+  flex: 1 1 240px;
+}
+
+.action-panel__tray-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(226,232,240,0.68);
+}
+
+.action-panel__tray-dice {
+  margin-top: 12px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-height: 34px;
+  align-items: center;
+}
+
+.table-footer-actions {
+  margin-top: 18px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.secondary-link-button {
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 12px;
+  background: rgba(8,12,20,0.56);
+  color: #f8fafc;
+  padding: 12px 16px;
+  cursor: pointer;
+}
+
+@keyframes felt-roll {
+  0% {
+    transform: translateY(-14px) rotate(-18deg) scale(0.88);
+    opacity: 0.2;
+  }
+  30% {
+    transform: translateY(8px) rotate(13deg) scale(1.04);
+    opacity: 1;
+  }
+  60% {
+    transform: translateY(-4px) rotate(-8deg) scale(0.98);
+  }
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes kept-pop {
+  0% {
+    transform: translateX(-18px) translateY(10px) scale(0.76);
+    opacity: 0;
+  }
+  60% {
+    transform: translateX(0) translateY(-2px) scale(1.06);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0) translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 1080px) {
+  .table-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .history-prompt {
+    order: 2;
+  }
+
+  .game-board {
+    width: min(920px, 100%);
+  }
+}
+
+@media (max-width: 720px) {
+  .table-room {
+    padding: 18px 12px 28px;
+  }
+
+  .game-board {
+    padding: 14px;
+    aspect-ratio: 1.15 / 1;
+  }
+
+  .seat-card {
+    min-width: 110px;
+    padding: 8px 10px;
+  }
+
+  .action-panel {
+    border-radius: 18px;
+    padding: 14px;
+  }
+}

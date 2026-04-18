@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { setPlayerIdentity } from "../lib/storage"
+import { getPlayerIdentity, setPlayerIdentity } from "../lib/storage"
 
 function generatePlayerId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -12,6 +12,13 @@ export default function NameForm() {
   const router = useRouter()
   const [name, setName] = useState("")
   const [error, setError] = useState("")
+
+  useEffect(() => {
+    const savedPlayer = getPlayerIdentity()
+    if (savedPlayer?.name) {
+      setName(savedPlayer.name)
+    }
+  }, [])
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -33,8 +40,10 @@ export default function NameForm() {
       return
     }
 
+    const savedPlayer = getPlayerIdentity()
+
     setPlayerIdentity({
-      id: generatePlayerId(),
+      id: savedPlayer?.id ?? generatePlayerId(),
       name: trimmedName,
     })
 
@@ -59,6 +68,10 @@ export default function NameForm() {
       />
 
       <button type="submit">Continue</button>
+
+      <p style={{ color: "#555", marginTop: "0.5rem" }}>
+        Your last used name is filled in, but you can change it before continuing.
+      </p>
 
       {error ? (
         <p style={{ color: "red", marginTop: "0.5rem" }}>{error}</p>
